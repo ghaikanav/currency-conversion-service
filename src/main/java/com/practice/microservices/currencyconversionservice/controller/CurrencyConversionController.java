@@ -1,6 +1,8 @@
 package com.practice.microservices.currencyconversionservice.controller;
 
 import com.practice.microservices.currencyconversionservice.dto.CurrencyConversionBean;
+import com.practice.microservices.currencyconversionservice.proxy.CurrencyExchangeServiceProxy;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -14,9 +16,12 @@ import java.util.Map;
 @RestController
 public class CurrencyConversionController {
 
+    @Autowired
+    private CurrencyExchangeServiceProxy proxy;
 
     @GetMapping("/currency-convertor")
     public CurrencyConversionBean getConvertedAmount(@RequestParam String from, @RequestParam String to, @RequestParam BigDecimal amount) {
+        // Feign will address this problem
         Map<String, String> uriVariables = new HashMap<>();
         uriVariables.put("from", from);
         uriVariables.put("to", to);
@@ -26,6 +31,19 @@ public class CurrencyConversionController {
                         CurrencyConversionBean.class,
                         uriVariables);
         CurrencyConversionBean response = responseEntity.getBody();
+        return new CurrencyConversionBean(
+                response.getId(),
+                from,
+                to,
+                response.getConversionMultiple(),
+                amount,
+                amount.multiply(response.getConversionMultiple()),
+                response.getPort());
+    }
+
+    @GetMapping("/currency-convertor-feign")
+    public CurrencyConversionBean convertCurrency(@RequestParam String from, @RequestParam String to, @RequestParam BigDecimal amount) {
+        CurrencyConversionBean response = proxy.getExchangeValue(from, to);
         return new CurrencyConversionBean(
                 response.getId(),
                 from,
